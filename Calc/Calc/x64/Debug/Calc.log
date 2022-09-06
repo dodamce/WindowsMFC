@@ -1,0 +1,4 @@
+﻿  Calc.cpp
+E:\Windows\Calc\Calc\Calc.h(175,26): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+E:\Windows\Calc\Calc\Calc.h(175,21): warning C4244: “参数”: 从“double”转换到“float”，可能丢失数据
+  Calc.vcxproj -> E:\Windows\Calc\x64\Debug\Calc.exe
