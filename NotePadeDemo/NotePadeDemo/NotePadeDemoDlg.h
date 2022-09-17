@@ -46,4 +46,9 @@ public:
 
 	//注册消息
 	afx_msg  LRESULT OnFindReplace(WPARAM wparam, LPARAM lparam);
+	//标记选择的是替换还是查找
+	BOOL m_flag;
+	//记录查找位置的光标
+	int nStartIndex;
+	int nEndIndex;
 };

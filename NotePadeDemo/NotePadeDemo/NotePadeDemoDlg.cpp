@@ -22,7 +22,9 @@ CNotePadeDemoDlg::CNotePadeDemoDlg(CWnd* pParent /*=nullptr*/)
 {
 	m_hIcon = AfxGetApp()->LoadIcon(IDR_MAINFRAME);
 	m_choice = RGB(0, 0, 0);//默认选择颜色是黑色
-	
+	m_flag = FALSE;
+	nStartIndex = 0;
+	nEndIndex = 0;
 }
 
 void CNotePadeDemoDlg::DoDataExchange(CDataExchange* pDX)
@@ -266,7 +268,7 @@ void CNotePadeDemoDlg::OnFind()
 	//不需要delete，CFindReplaceDialog类内部处理了。不会导致内存泄漏
 
 	//此外，还需要向系统注册一个消息
-
+	this->m_flag = TRUE;
 }
 
 
@@ -279,9 +281,114 @@ void CNotePadeDemoDlg::OnReplace()
 	dlg->Create(FALSE, NULL, NULL);
 
 	dlg->ShowWindow(SW_SHOW);
+
+	this->m_flag = FALSE;
 }
 
 //处理查找和替换操作
 LRESULT CNotePadeDemoDlg::OnFindReplace(WPARAM wparam, LPARAM lparam) {
+	CFindReplaceDialog* lpfindReplace = CFindReplaceDialog::GetNotifier(lparam);  
+	if (lpfindReplace == nullptr) {
+		return 0;
+	}
+	//如果要退出窗口
+	if (lpfindReplace->IsTerminating()) {
+		return 0;
+	}
+	//获取需要查找字符串
+	CString str_find = lpfindReplace->GetFindString();
+	//获取要替换的字符串
+	CString str_replaces = lpfindReplace->GetReplaceString();
+
+	BOOL SearchDownFlag = lpfindReplace->SearchDown();//判断是否向下查找,TRUE代表向下查找
+
+	BOOL MatchCass = lpfindReplace->MatchCase();//判断是否区分大小
+
+	//获取记事本内的文本
+	CString strContent;
+	GetDlgItemText(IDC_EDIT, strContent);
+
+	//获取记事本文本控件
+	CEdit* lpEdit = (CEdit*)GetDlgItem(IDC_EDIT);
+
+	//查找
+	if (this->m_flag == TRUE) {
+		//获取光标起始，结束位置
+		lpEdit->GetSel(this->nStartIndex, this->nEndIndex);
+
+		if (SearchDownFlag) {
+			//向下查找
+			//从结束位置开始向下找
+			this->nStartIndex = strContent.Find(str_find, this->nEndIndex);
+			if (this->nStartIndex != -1) {
+				//找到了，标记这个字符串
+				lpEdit->SetSel(this->nStartIndex, this->nStartIndex + str_find.GetLength());
+				lpEdit->SetFocus();
+			}
+			else {
+				////从头开始找
+				//this->nStartIndex = strContent.Find(str_find, 0);
+					//文中没有这个字符串
+				CString msg;
+				msg.Format(L"在下文中没有找到%s这个字符串", str_find.GetString());
+				MessageBox(msg, L"警告", MB_OK|MB_ICONWARNING);
+				return 0;
+
+				//else {
+				//	//找到了，标记这个字符串
+				//	MessageBox(L"在上文中找到这个字符串", L"提示");
+				//	lpEdit->SetSel(this->nStartIndex, this->nStartIndex + str_find.GetLength());
+				//	lpEdit->SetFocus();
+				//}
+			}
+		}
+		else {
+			//向上查找,反转字符串
+			strContent = strContent.MakeReverse();
+			CString str_refind = str_find.MakeReverse();
+			this->nStartIndex = strContent.Find(str_refind, strContent.GetLength() - this->nStartIndex);
+
+			if (this->nStartIndex != -1) {
+				//设置光标
+				this->nEndIndex = strContent.GetLength() - this->nStartIndex;
+				lpEdit->SetSel(nEndIndex - str_find.GetLength(), nEndIndex);
+				lpEdit->SetFocus();
+			}
+			else {
+				CString msg;
+				msg.Format(L"在上文中没有找到%s这个字符串", str_find.GetString());
+				MessageBox(msg, L"警告", MB_OK | MB_ICONWARNING);
+				return 0;
+			}
+		}
+	}
+	//替换
+	else {
+		if (lpfindReplace->ReplaceCurrent()) {
+			this->nStartIndex = strContent.Find(str_find);
+			if (this->nStartIndex == -1) {
+				MessageBox(L"查不到这个字符串", L"警告", MB_OK);
+				return 0;
+			}
+			else {
+				this->nEndIndex = this->nStartIndex + str_find.GetLength();
+
+				//字符串剪切
+				CString left = strContent.Left(nStartIndex);
+				CString right = strContent.Right(strContent.GetLength() - nEndIndex);
+				strContent = left + str_replaces + right;
+				lpEdit->SetWindowText(strContent);
+			}
+		}
+
+		//替换全部
+		if (lpfindReplace->ReplaceAll()) {
+			int ntimes = strContent.Replace(str_find, str_replaces);
+			lpEdit->SetWindowText(strContent);
+			CString msg;
+			msg.Format(L"替换成功,替换了%d处", ntimes);
+			MessageBox(msg, L"提示", MB_OK);
+		}
+	}
 	return 0;
 }
